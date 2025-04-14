@@ -180,24 +180,110 @@ class WorldGenerator:
                                                        world["government"])
         return world
 
+
+class Mongoose2eWorldGenerator(WorldGenerator):
+    """ World Generation rules from Mongoose Traveller 2nd Edition """
+
+    def generate_atmosphere(self, size):
+        """ MT2e allows atmospheres on size zero worlds """
+        atmo = dice.roll(2, 6) - 7 + size
+        if atmo < 0:
+            return 0
+        return atmo
+
+    def generate_hydrosphere(self, size, atmosphere):
+        """ MT2e has slightly different Atmosphere DMs
+
+        I'm going to ignore the DMs for 'Temperature' as temperature
+        is not part of the UWP and so there is no way to record it."""
+
+        dm = 0
+        if size == 0 or size == 1:
+            return 0
+        if atmosphere in [0, 1, 0xA, 0xB, 0xC]:
+            dm = -4
+        hydro = dice.roll(2, 6) - 7 + size + dm
+        if hydro < 0:
+            return 0
+        if hydro > 0xA:
+            return 0xA
+        return hydro
+
+
+    def generate_starport(self, population):
+        """ MT2e has DMs for starports based on population """
+        if population >= 8:
+            dm = 1
+        elif population >= 0xA:
+            dm = 2
+        elif population <= 4:
+            dm = -1
+        elif population <= 2:
+            dm = -2
+        else:
+            dm = 0
+        port_roll = dice.roll(2, 6) + dm
+        if port_roll <= 2:
+            return 'X'
+        if port_roll <= 4:
+            return 'E'
+        if port_roll <= 6:
+            return 'D'
+        if port_roll <= 8:
+            return 'C'
+        if port_roll <= 10:
+            return 'B'
+        return 'A'
+
+    def get_hydro_tech_dm(self, hydro):
+        """ MT2e has slightly different hydro tech DMs """
+        if hydro == 0 or hydro == 9:
+            return 1
+        elif hydro == 0xA:
+            return 2
+        return 0
+
+    def get_gov_tech_dm(self, gov):
+        """ MT2e has slightly different gov tech DMs """
+        if gov in [0, 5]:
+            return 1
+        elif gov == 7:
+            return 2
+        elif gov in [0xD, 0xE]:
+            return -2
+        else:
+            return 0
+
+    def generate_world(self):
+        """ MT2e requires population for starport """
+        world = {}
+        world["size"] = self.generate_size()
+        world["atmosphere"] = self.generate_atmosphere(world["size"])
+        world["hydrosphere"] = self.generate_hydrosphere(world["size"],
+                                                         world["atmosphere"])
+        world["population"] = self.generate_population()
+        world["starport"] = self.generate_starport(world["population"])
+        world["government"] = self.generate_government(world["population"])
+        world["law_level"] = self.generate_law_level(world["government"])
+        world["tech_level"] = self.generate_tech_level(world["starport"],
+                                                       world["size"],
+                                                       world["atmosphere"],
+                                                       world["hydrosphere"],
+                                                       world["population"],
+                                                       world["government"])
+        return world
+
+
 if __name__ == "__main__":
-    wg = WorldGenerator()
+    wg = Mongoose2eWorldGenerator()
     world = wg.generate_world()
     # This is a test. Eventually this will be the uwp class __str__ method
-    for key, value in world.items():
-        if key == "tech_level":
-            print("-", end="")
-        if key == "starport":
-            print(value, end="")
-        else:
-            print(hex_table[value], end="")
-                
-
-
-
-
-    
-        
-        
-    
-        
+    print(world["starport"],
+          hex_table[world["size"]],
+          hex_table[world["atmosphere"]],
+          hex_table[world["hydrosphere"]],
+          hex_table[world["population"]],
+          hex_table[world["government"]],
+          hex_table[world["law_level"]], "-",
+          hex_table[world["tech_level"]],
+          sep = "")
