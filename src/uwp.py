@@ -10,32 +10,70 @@ hex_table = [
     'U', 'V', 'W', 'X', 'Y', 'Z'
     ]
 
-class Uwp:
-    """ Base Class of UWP being that presented in Classic Traveller """
+def hex_to_int(hex_value):
+    """ Converts a string 'hex' value into an int. """
+    if hex_value in hex_table:
+        return hex_table.index(hex_value)
+    else:
+        raise ValueError
 
-    def __init__(self, name = None, uwp_string = None):
-        pass   
+def int_to_hex(value):
+    """ Converts an int value into a string 'hex' value """
+    if value < len(hex_table):
+        return hex_table[value]
+    else:
+        raise ValueError
 
-class WorldGenerator:
-    """ A container for methods that generate UWP data
+def check_is_uwp_string_valid(uwp_string):
+    """ Checks if this is a well formed uwp_string with sane values
 
-    Why a class and not a collection of functions? Because the intention
-    is to present the rules from Classic Traveller here, and then create
-    subclasses that can use the rules from other editions. """
+        A valid UWP is of the form S123456-7 where
+        S indicates Starport and can be A,B,C,D,E or X
+        1 through 7 are 'hex' values and must be on the hex table
+        - separates tech level from the rest of the string and must
+        be present. """
 
-    def __init__(self):
-        pass
-    
-    def generate_starport(self):
+    if len(uwp_string) != 9:
+        return False
+
+    if uwp_string[-2] != '-':
+        return False
+
+    if uwp_string[0] not in ['A', 'B', 'C', 'D', 'E', 'X']:
+        return False
+
+    hexvalues = uwp_string[1:-2] + uwp_string[-1]
+
+    for hexvalue in hexvalues:
+        if hexvalue not in hex_table:
+            return False
+
+    return True
+
+
+class World:
+    """ Base Class of World being that presented in Classic Traveller """
+
+    # All these private class _generate* methods are little helper functions
+    # that implement the rules for world generation. They are here because
+    # different rules sets (classic traveller, mongoose traveller, etc) use
+    # slightly different rules for generating worlds, and so these are intended
+    # to be overriden when necessary by child classes
+    # Why class methods?
+    # 1) They may be overriden by child classes
+    # 2) Some of them may need to call other _generate* methods or other
+    #    similar helpers like the _get_*_tech_dm methods
+    @classmethod
+    def _generate_starport(cls):
         table = ['A', 'A', 'A', 'B', 'B', 'C', 'C', 'D', 'E', 'E', 'X']
         return table[dice.roll(2,6) - 1]
 
-    def generate_size(self):
-        """ Generates new world size """
+    @classmethod
+    def _generate_size(cls):
         return dice.roll(2, 6) - 2
 
-    def generate_atmosphere(self, size):
-        """ Generates new world atmosphere given size """
+    @classmethod
+    def _generate_atmosphere(cls, size):
         if size == 0:
             return 0
         atmo = dice.roll(2, 6) - 7 + size
@@ -43,10 +81,8 @@ class WorldGenerator:
             return 0
         return atmo
 
-    def generate_hydrosphere(self, size, atmosphere):
-        """ Generates new world hydrosphere given size and atmosphere
-
-        A hydrosphere cannot be greater than 'A'."""
+    @classmethod
+    def _generate_hydrosphere(cls, size, atmosphere):
         dm = 0
         if size == 0:
             return 0
@@ -59,39 +95,40 @@ class WorldGenerator:
             return 0xA
         return hydro
 
-    def generate_population(self):
-        """ Generates new world population """
+    @classmethod 
+    def _generate_population(cls):
         return dice.roll(2, 6) - 2
 
-    def generate_government(self, population):
-        """ Generates new world government given population """
+    @classmethod
+    def _generate_government(cls, population):
         pop = dice.roll(2, 6) - 7 + population
         if pop < 0:
             return 0
         return pop
 
-    def generate_law_level(self, government):
-        """ Generates new world law level given government """
+    @classmethod
+    def _generate_law_level(cls, government):
         law = dice.roll(2, 6) - 7 + government
         if law < 0:
             return 0
         return law
 
-    def get_starport_tech_dm(self, starport):
-        """ Gets the tech dice modifier for a given starport.
+    # All these private class _get_*_tech_dm methods are used to help the
+    # _generate_tech_level method. Again some may be overriden by
+    # child classes as different editions may have slightly different
+    # rules for the tech dms.
 
-        Expects the starport to be a single character string. """
-        
+    @classmethod
+    def _get_starport_tech_dm(cls, starport):
+        """ Expects the starport to be a single character string. """
         dms = {'A': 6, 'B': 4, 'C': 2, 'X': -4}
         if starport in dms:
             return dms[starport]
         else:
             return 0
 
-    def get_size_tech_dm(self, size):
-        """ Gets the tech dice modifier for a given size.
-
-        Expects the size to be an int. """
+    @classmethod
+    def _get_size_tech_dm(cls, size):
         if size <= 1:
             return 2
         elif size <= 4:
@@ -99,30 +136,24 @@ class WorldGenerator:
         else:
             return 0
 
-    def get_atmo_tech_dm(self, atmo):
-        """ Gets the tech dice modifier for a given atmosphere.
-
-        Expects the atmosphere to be an int. """
+    @classmethod
+    def _get_atmo_tech_dm(cls, atmo):
         if atmo <= 3:
             return 1
         elif atmo >= 0xA and atmo < 0xF:
             return 1
         return 0
 
-    def get_hydro_tech_dm(self, hydro):
-        """ Gets the tech dice modifier for a given hydrosphere.
-
-        Expects the hydrosphere to be an int. """
+    @classmethod
+    def _get_hydro_tech_dm(cls, hydro):
         if hydro == 9:
             return 1
         elif hydro == 0xA:
             return 2
         return 0
 
-    def get_pop_tech_dm(self, pop):
-        """ Gets the tech dice modifier for a given population.
-
-        Expects the population to be an int. """
+    @classmethod
+    def _get_pop_tech_dm(cls, pop):
         if pop == 0:
             return 0
         elif pop <= 5:
@@ -134,10 +165,8 @@ class WorldGenerator:
         else:
             return 0
 
-    def get_gov_tech_dm(self, gov):
-        """ Gets the tech dice modifier for a given government.
-
-        Expects the government to be an int. """
+    @classmethod
+    def _get_gov_tech_dm(cls, gov):
         if gov == 0:
             return 1
         elif gov == 5:
@@ -147,54 +176,86 @@ class WorldGenerator:
         else:
             return 0
 
-    def generate_tech_level(self, starport, size, atmosphere, \
-                            hydrosphere, population, government):
+    @classmethod
+    def _generate_tech_level(cls, starport, size, atmosphere, \
+                              hydrosphere, population, government):
         """ Calls all the tech_dm methods and generates a tech level """
-        dm = self.get_starport_tech_dm(starport) + \
-                self.get_size_tech_dm(size) + \
-                self.get_atmo_tech_dm(atmosphere) + \
-                self.get_hydro_tech_dm(hydrosphere) + \
-                self.get_pop_tech_dm(population) + \
-                self.get_gov_tech_dm(government)
+        dm = cls._get_starport_tech_dm(starport) + \
+             cls._get_size_tech_dm(size) + \
+             cls._get_atmo_tech_dm(atmosphere) + \
+             cls._get_hydro_tech_dm(hydrosphere) + \
+             cls._get_pop_tech_dm(population) + \
+             cls._get_gov_tech_dm(government)
         tech = dice.roll(1,6) + dm
         if tech < 0:
             tech = 0
         return tech
 
-    def generate_world(self):
-        """ Calls all the generate methods and generates a UWP """
-        world = {}
-        world["starport"] = self.generate_starport()
-        world["size"] = self.generate_size()
-        world["atmosphere"] = self.generate_atmosphere(world["size"])
-        world["hydrosphere"] = self.generate_hydrosphere(world["size"],
-                                                         world["atmosphere"])
-        world["population"] = self.generate_population()
-        world["government"] = self.generate_government(world["population"])
-        world["law_level"] = self.generate_law_level(world["government"])
-        world["tech_level"] = self.generate_tech_level(world["starport"],
-                                                       world["size"],
-                                                       world["atmosphere"],
-                                                       world["hydrosphere"],
-                                                       world["population"],
-                                                       world["government"])
-        return world
+    def create_from_new_generation(self):
+        """ Generates a new world using the various _generate methods """
+        self.starport = self._generate_starport()
+        self.size = self._generate_size()
+        self.atmosphere = self._generate_atmosphere(self.size)
+        self.hydrosphere = self._generate_hydrosphere(self.size, self.atmosphere)
+        self.population = self._generate_population()
+        self.government = self._generate_government(self.population)
+        self.law_level = self._generate_law_level(self.government)
+        self.tech_level = self._generate_tech_level(
+                self.starport, self.size, self.atmosphere,
+                self.hydrosphere, self.population, self.government)
+
+    def create_from_uwp_string(self, uwp_string):
+        """ Checks UWP validity and creates the world from these values """
+        if not check_is_uwp_string_valid(uwp_string):
+            raise ValueError
+
+        self.starport = uwp_string[0]
+        self.size = hex_to_int(uwp_string[1])
+        self.atmosphere = hex_to_int(uwp_string[2])
+        self.hydrosphere = hex_to_int(uwp_string[3])
+        self.population = hex_to_int(uwp_string[4])
+        self.government = hex_to_int(uwp_string[5])
+        self.law_level = hex_to_int(uwp_string[6])
+        self.tech_level = hex_to_int(uwp_string[8])
+
+    def __init__(self, name = None, uwp_string = None):
+        """ Creates the world from a given UWP, or generates a new one """
+        if uwp_string:
+            self.create_from_uwp_string(uwp_string)
+        else:
+            self.create_from_new_generation()
+
+        if name:
+            self.name = name
+        else:
+            self.name = None
+
+    def __str__(self):
+        return self.starport + \
+                int_to_hex(self.size) + \
+                int_to_hex(self.atmosphere) + \
+                int_to_hex(self.hydrosphere) + \
+                int_to_hex(self.population) + \
+                int_to_hex(self.government) + \
+                int_to_hex(self.law_level) + "-" +\
+                int_to_hex(self.tech_level)
 
 
-class Mongoose2eWorldGenerator(WorldGenerator):
+class MT2eWorld(World):
     """ World Generation rules from Mongoose Traveller 2nd Edition """
 
-    def generate_atmosphere(self, size):
-        """ MT2e allows atmospheres on size zero worlds """
+    # We need to override the various helper functions for _generate_world
+    # in the cases where the MT2e rules differ from Classic Traveller
+    @classmethod
+    def _generate_atmosphere(cls, size):
         atmo = dice.roll(2, 6) - 7 + size
         if atmo < 0:
             return 0
         return atmo
 
-    def generate_hydrosphere(self, size, atmosphere):
-        """ MT2e has slightly different Atmosphere DMs
-
-        I'm going to ignore the DMs for 'Temperature' as temperature
+    @classmethod
+    def _generate_hydrosphere(cls, size, atmosphere):
+        """ I'm going to ignore the DMs for 'Temperature' as temperature
         is not part of the UWP and so there is no way to record it."""
 
         dm = 0
@@ -209,9 +270,14 @@ class Mongoose2eWorldGenerator(WorldGenerator):
             return 0xA
         return hydro
 
+    @classmethod
+    def _generate_starport(cls, population):
+        """ MT2e has DMs for starports based on population.
 
-    def generate_starport(self, population):
-        """ MT2e has DMs for starports based on population """
+            Unlike the base class method, this one takes a parameter
+            (i.e. population). This means we'll also have to override the
+            create_from_new_generation method. """
+
         if population >= 8:
             dm = 1
         elif population >= 0xA:
@@ -235,16 +301,17 @@ class Mongoose2eWorldGenerator(WorldGenerator):
             return 'B'
         return 'A'
 
-    def get_hydro_tech_dm(self, hydro):
-        """ MT2e has slightly different hydro tech DMs """
+    @classmethod
+    def _get_hydro_tech_dm(cls, hydro):
         if hydro == 0 or hydro == 9:
             return 1
         elif hydro == 0xA:
             return 2
         return 0
 
-    def get_gov_tech_dm(self, gov):
-        """ MT2e has slightly different gov tech DMs """
+
+    @classmethod
+    def _get_gov_tech_dm(cls, gov):
         if gov in [0, 5]:
             return 1
         elif gov == 7:
@@ -254,36 +321,43 @@ class Mongoose2eWorldGenerator(WorldGenerator):
         else:
             return 0
 
-    def generate_world(self):
+    @classmethod
+    def generate_world(cls):
+        uwp = {}
+        uwp["size"] = cls._generate_size()
+        uwp["atmosphere"] = cls._generate_atmosphere(uwp["size"])
+        uwp["hydrosphere"] = cls._generate_hydrosphere(
+                uwp["size"], uwp["atmosphere"])
+        uwp["population"] = cls._generate_population()
+        uwp["starport"] = cls._generate_starport(uwp["population"])
+        uwp["government"] = cls._generate_government(uwp["population"])
+        uwp["law_level"] = cls._generate_law_level(uwp["government"])
+        uwp["tech_level"] = cls._generate_tech_level(
+                uwp["starport"], uwp["size"], uwp["atmosphere"],
+                uwp["hydrosphere"], uwp["population"], uwp["government"])
+        return uwp
+
+    def create_from_new_generation(self):
         """ MT2e requires population for starport """
-        world = {}
-        world["size"] = self.generate_size()
-        world["atmosphere"] = self.generate_atmosphere(world["size"])
-        world["hydrosphere"] = self.generate_hydrosphere(world["size"],
-                                                         world["atmosphere"])
-        world["population"] = self.generate_population()
-        world["starport"] = self.generate_starport(world["population"])
-        world["government"] = self.generate_government(world["population"])
-        world["law_level"] = self.generate_law_level(world["government"])
-        world["tech_level"] = self.generate_tech_level(world["starport"],
-                                                       world["size"],
-                                                       world["atmosphere"],
-                                                       world["hydrosphere"],
-                                                       world["population"],
-                                                       world["government"])
-        return world
+        self.size = self._generate_size()
+        self.atmosphere = self._generate_atmosphere(self.size)
+        self.hydrosphere = self._generate_hydrosphere(self.size, self.atmosphere)
+        self.population = self._generate_population()
+        self.starport = self._generate_starport(self.population)
+        self.government = self._generate_government(self.population)
+        self.law_level = self._generate_law_level(self.government)
+        self.tech_level = self._generate_tech_level(
+                self.starport, self.size, self.atmosphere,
+                self.hydrosphere, self.population, self.government)
+
 
 
 if __name__ == "__main__":
-    wg = Mongoose2eWorldGenerator()
-    world = wg.generate_world()
-    # This is a test. Eventually this will be the uwp class __str__ method
-    print(world["starport"],
-          hex_table[world["size"]],
-          hex_table[world["atmosphere"]],
-          hex_table[world["hydrosphere"]],
-          hex_table[world["population"]],
-          hex_table[world["government"]],
-          hex_table[world["law_level"]], "-",
-          hex_table[world["tech_level"]],
-          sep = "")
+    world = MT2eWorld()
+
+    print(world)
+
+    world = MT2eWorld(name = "Earth", uwp_string = "A876977-8")
+
+    print(world)
+
