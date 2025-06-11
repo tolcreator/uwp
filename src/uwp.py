@@ -217,17 +217,12 @@ class World:
         self.law_level = hex_to_int(uwp_string[6])
         self.tech_level = hex_to_int(uwp_string[8])
 
-    def __init__(self, name = None, uwp_string = None):
+    def __init__(self, uwp_string = None):
         """ Creates the world from a given UWP, or generates a new one """
         if uwp_string:
             self.create_from_uwp_string(uwp_string)
         else:
             self.create_from_new_generation()
-
-        if name:
-            self.name = name
-        else:
-            self.name = None
 
     def __str__(self):
         return self.starport + \
@@ -547,7 +542,7 @@ if __name__ == "__main__":
     print(world)
     print(world.get_trade_codes())
 
-    world = MT2eWorld(name = "Earth", uwp_string = "A867977-8")
+    world = MT2eWorld(uwp_string = "A867977-8")
 
     print(world)
     print(world.get_trade_codes())
