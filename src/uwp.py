@@ -50,7 +50,6 @@ def check_is_uwp_string_valid(uwp_string):
 
     return True
 
-
 class World:
     """ Base Class of World being that presented in Classic Traveller """
 
@@ -240,6 +239,107 @@ class World:
                 int_to_hex(self.law_level) + "-" +\
                 int_to_hex(self.tech_level)
 
+    # All of these methods check for various trade codes
+    def get_is_trade_agricultural(self):
+        if self.atmosphere in [4, 5, 6, 7, 8, 9] and \
+                self.hydrosphere in [4, 5, 6, 7, 8] and \
+                self.population in [5, 6, 7]:
+                    return True
+        return False
+
+    def get_is_trade_non_agricultural(self):
+        if self.atmosphere <= 3 and \
+                self.hydrosphere <= 3 and \
+                self.population >= 6:
+                    return True
+        return False
+
+    def get_is_trade_industrial(self):
+        if self.atmosphere in [0, 1, 2, 4, 7, 9] and \
+                self.population >= 9:
+                    return True
+        return False
+
+    def get_is_trade_non_industrial(self):
+        if self.population <= 6:
+            return True
+        return False
+
+    def get_is_trade_rich(self):
+        if self.atmosphere in [6, 8] and \
+                self.population in [6, 7, 8] and \
+                self.government in [4, 5, 6, 7, 8, 9]:
+                    return True
+        return False
+
+    def get_is_trade_poor(self):
+        if self.atmosphere in [2, 3, 4, 5] and \
+                self.hydrosphere <= 3:
+                    return True
+        return False
+
+    def get_is_trade_water(self):
+        if self.hydrosphere == 0xA:
+            return True
+        return False
+
+    def get_is_trade_desert(self):
+        if self.hydrosphere == 0:
+            return True
+        return False
+
+    def get_is_trade_vacuum(self):
+        if self.atmosphere == 0:
+            return True
+        return False
+
+    def get_is_trade_asteroid(self):
+        if self.size == 0:
+            return True
+        return False
+
+    def get_is_trade_ice_capped(self):
+        if self.atmosphere in [0, 1] and \
+                self.hydrosphere != 0:
+                    return True
+        return False
+
+    def get_trade_codes(self):
+        """ These checks presented in the same order as in CT """
+
+        """ We calculate these every time rather than storing them
+        because this is information *about* uwp, not something uwp
+        should know itself. We return a list rather than a string because
+        it is not uwp's job to print this, and we may need the list
+        for other purposes.
+        I can see a case to be made for pre calculating after generation
+        or initialisation with a given UWP. """
+
+        trade_codes = []
+        if self.get_is_trade_agricultural():
+            trade_codes.append("Ag")
+        if self.get_is_trade_non_agricultural():
+            trade_codes.append("Na")
+        if self.get_is_trade_industrial():
+            trade_codes.append("In")
+        if self.get_is_trade_non_industrial():
+            trade_codes.append("Ni")
+        if self.get_is_trade_rich():
+            trade_codes.append("Ri")
+        if self.get_is_trade_poor():
+            trade_codes.append("Po")
+        if self.get_is_trade_water():
+            trade_codes.append("Wa")
+        if self.get_is_trade_desert():
+            trade_codes.append("De")
+        if self.get_is_trade_vacuum():
+            trade_codes.append("Va")
+        if self.get_is_trade_asteroid():
+            trade_codes.append("As")
+        if self.get_is_trade_ice_capped():
+            trade_codes.append("Ic")
+        
+        return trade_codes
 
 class MT2eWorld(World):
     """ World Generation rules from Mongoose Traveller 2nd Edition """
@@ -350,14 +450,106 @@ class MT2eWorld(World):
                 self.starport, self.size, self.atmosphere,
                 self.hydrosphere, self.population, self.government)
 
+    # Updates to Trade Classifications
+    def get_is_trade_asteroid(self):
+        if self.size == 0 and \
+                self.atmosphere == 0 and \
+                self.hydrosphere == 0:
+                    return True
+        return False
+
+    def get_is_trade_barren(self):
+        if self.population == 0 and \
+                self.government == 0 and \
+                self.law_level == 0:
+                    return True
+        return False
+
+    def get_is_trade_fluid_oceans(self):
+        if self.atmosphere >= 10 and \
+                self.hydrosphere >= 1:
+                    return True
+        return False
+
+    def get_is_trade_garden(self):
+        if self.size in [6, 7, 8] and \
+                self.atmosphere in [5, 6, 8] and \
+                self.hydrosphere in [5, 6, 7]:
+                    return True
+        return False
+
+    def get_is_trade_high_population(self):
+        if self.population >= 9:
+            return True
+        return False
+
+    def get_is_trade_high_tech(self):
+        if self.tech_level >= 0xC:
+            return True
+        return False
+
+    def get_is_trade_low_population(self):
+        if self.population <= 3:
+            return True
+        return False
+
+    def get_is_trade_low_tech(self):
+        if self.tech_level <= 5:
+            return True
+        return False
+
+    def get_trade_codes(self):
+        """ Checks presented in same order as in MGT2e """
+        trade_codes = []
+        if self.get_is_trade_agricultural():
+            trade_codes.append("Ag")
+        if self.get_is_trade_asteroid():
+            trade_codes.append("As")
+        if self.get_is_trade_barren():
+            trade_codes.append("Ba")
+        if self.get_is_trade_desert():
+            trade_codes.append("De")
+        if self.get_is_trade_fluid_oceans():
+            trade_codes.append("Fl")
+        if self.get_is_trade_garden():
+            trade_codes.append("Ga")
+        if self.get_is_trade_high_population():
+            trade_codes.append("Hi")
+        if self.get_is_trade_high_tech():
+            trade_codes.append("Ht")
+        if self.get_is_trade_ice_capped():
+            trade_codes.append("Ic")
+        if self.get_is_trade_industrial():
+            trade_codes.append("In")
+        if self.get_is_trade_low_population():
+            trade_codes.append("Lo")
+        if self.get_is_trade_low_tech():
+            trade_codes.append("Lt")
+        if self.get_is_trade_non_agricultural():
+            trade_codes.append("Na")
+        if self.get_is_trade_non_industrial():
+            trade_codes.append("Ni")
+        if self.get_is_trade_poor():
+            trade_codes.append("Po")
+        if self.get_is_trade_rich():
+            trade_codes.append("Ri")
+        if self.get_is_trade_vacuum():
+            trade_codes.append("Va")
+        if self.get_is_trade_water():
+            trade_codes.append("Wa")
+
+        return trade_codes
 
 
 if __name__ == "__main__":
     world = MT2eWorld()
 
     print(world)
+    print(world.get_trade_codes())
 
-    world = MT2eWorld(name = "Earth", uwp_string = "A876977-8")
+    world = MT2eWorld(name = "Earth", uwp_string = "A867977-8")
 
     print(world)
+    print(world.get_trade_codes())
+
 
