@@ -9,7 +9,7 @@ import uwp
 class System:
     """ Base Class of System being that presented in Classic Traveller """
 
-    def __init__(self, name, coordinates, uwp,
+    def __init__(self, name, coordinates, uwp = None,
                  naval = False, scout = False, gas = False):
         self.name = name
         self.coordinates = coordinates
@@ -19,7 +19,9 @@ class System:
         self.gas_giant = gas
 
     def generate(self):
-        """ Generates naval, scout base, and gas giant presence """
+        """ Generates all system details"""
+
+        self.uwp = uwp.Factory(uwp_string = None, edition = "CT")
 
         if self.uwp.starport in ['A', 'B'] and dice.roll(2, 6) >= 8:
             self.naval_base = True
@@ -65,7 +67,6 @@ class System:
         else:
             return "101"
 
-
     def __str__(self):
         """ Should return a valid line for a .sec file """
         """ We're leaving travel zone and allegiance blank
@@ -80,15 +81,25 @@ class System:
                 "    "
 
 
+class MGT2eSystem(System):
+    pass
+
+
+def Factory(name, coordinates, edition = "MGT2e"):
+    """ Gives appropriate version per the edition """
+    system_per_edition = {
+        "CT": System,
+        "MGT2e": MGT2eSystem
+    }
+    return system_per_edition[edition](name, coordinates)
+
 
 if __name__ == "__main__":
-    earth = uwp.MT2eWorld(uwp_string = "A867977-8")
+    earth = uwp.Factory(uwp_string = "A867977-8")
     solar_system = System(name = "Earth", coordinates = (0,0), uwp = earth)
     print(solar_system)
 
-    rando_world = uwp.MT2eWorld()
     rando_system = System(name = "Rando", 
-                          coordinates = (dice.roll(1,10), dice.roll(1,8)),
-                          uwp = rando_world)
+                          coordinates = (dice.roll(1,10), dice.roll(1,8)))
     rando_system.generate()
     print(rando_system)

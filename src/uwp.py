@@ -34,18 +34,25 @@ def check_is_uwp_string_valid(uwp_string):
         be present. """
 
     if len(uwp_string) != 9:
+        print(f"uwp_string '{uwp_string}' incorrect length:" \
+                f"{len(uwp_string)}")
         return False
 
     if uwp_string[-2] != '-':
+        print(f"uwp_string '{uwp_string}' second last character" \
+                f"is not '-': '{uwp_string[-2]}'")
         return False
 
     if uwp_string[0] not in ['A', 'B', 'C', 'D', 'E', 'X']:
+        print(f"uwp_string '{uwp_string}' invalid starport: {uwp_string[0]}")
         return False
 
     hexvalues = uwp_string[1:-2] + uwp_string[-1]
 
     for hexvalue in hexvalues:
         if hexvalue not in hex_table:
+            print(f"In uwp_string '{uwp_string}' Found character that is" \
+                    f"not a hex value: '{hexvalue}'")
             return False
 
     return True
@@ -65,7 +72,7 @@ class World:
     @classmethod
     def _generate_starport(cls):
         table = ['A', 'A', 'A', 'B', 'B', 'C', 'C', 'D', 'E', 'E', 'X']
-        return table[dice.roll(2,6) - 1]
+        return table[dice.roll(2,6) - 2]
 
     @classmethod
     def _generate_size(cls):
@@ -336,7 +343,7 @@ class World:
         
         return trade_codes
 
-class MT2eWorld(World):
+class MGT2eWorld(World):
     """ World Generation rules from Mongoose Traveller 2nd Edition """
 
     # We need to override the various helper functions for _generate_world
@@ -536,13 +543,22 @@ class MT2eWorld(World):
         return trade_codes
 
 
+def Factory(uwp_string = None, edition = "MGT2e"):
+    """ Gives appropriate version per the edition """
+    uwp_per_edition = {
+        "CT": World,
+        "MGT2e": MGT2eWorld
+    }
+    return uwp_per_edition[edition](uwp_string)
+
+
 if __name__ == "__main__":
-    world = MT2eWorld()
+    world = MGT2eWorld()
 
     print(world)
     print(world.get_trade_codes())
 
-    world = MT2eWorld(uwp_string = "A867977-8")
+    world = MGT2eWorld(uwp_string = "A867977-8")
 
     print(world)
     print(world.get_trade_codes())
