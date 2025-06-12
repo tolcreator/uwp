@@ -16,13 +16,22 @@ class System:
         self.uwp = uwp
         self.naval_base = naval
         self.scout_base = scout
-        self.gas_giant = gas
+        # CT only notes gas giant presence, not number
+        if gas:
+            self.gas_giants = 1
+        else:
+            self.gas_giants = 0
+        # CT doesn't have notions of population multiplier
+        # or planetoid belts. But we'll set them here anyway
+        self.belts = 0
+        self.population_multiplier = 1
 
-    def generate(self):
-        """ Generates all system details"""
-
+    def generate_uwp(self):
+        """ Using CT rules for UWP because we are a CT system """
         self.uwp = uwp.Factory(uwp_string = None, edition = "CT")
 
+    def generate_bases(self):
+        """ Note that this requires the system to have a valid UWP """
         if self.uwp.starport in ['A', 'B'] and dice.roll(2, 6) >= 8:
             self.naval_base = True
         else:
@@ -42,10 +51,23 @@ class System:
         else:
             self.scout_base = False
 
+    def generate_pbg(self):
+        """ Note that CT only has rules for gas giant presence
+
+        P = Population Multiplier
+        B = Belts (i.e. Planetoid Belts)
+        G = Gas Giants """
+
         if dice.roll(2, 6) <= 9:
-            self.gas_giant = True
+            self.gas_giants = 1
         else:
-            self.gas_giant = False
+            self.gas_giants = 0
+
+    def generate(self):
+        """ Generates all system details"""
+        self.generate_uwp()
+        self.generate_bases()
+        self.generate_pbg()
 
     def get_base_code(self):
         if self.naval_base and self.scout_base:
@@ -61,11 +83,11 @@ class System:
         return " ".join(trade_codes)
 
     def get_pbg_str(self):
-        """ Best approximation using CT rules """
-        if self.gas_giant:
-            return "100"
-        else:
-            return "101"
+        """ Future proofed against subclasses that have these features """
+        return "{}{}{}".format(
+                self.population_multiplier,
+                self.belts,
+                self.gas_giants)
 
     def __str__(self):
         """ Should return a valid line for a .sec file """
@@ -75,14 +97,52 @@ class System:
                 f"{self.coordinates[0]:02d}{self.coordinates[1]:02d} " \
                 f"{self.uwp}  " \
                 f"{self.get_base_code()} " \
-                f"{self.get_trade_codes_str():<15}" \
+                f"{self.get_trade_codes_str():<20}" \
                 "    " \
                 f"{self.get_pbg_str()}" \
                 "    "
 
 
 class MGT2eSystem(System):
-    pass
+    """ MGT2e lacks rules for things like PBG
+
+    This subclass substitutes in the rules from Megatraveller for these """
+
+    def generate_uwp(self):
+        self.uwp = uwp.Factory(uwp_string = None, edition = "MGT2e")
+
+    def generate_pbg(self):
+        """ Uses MT rules for generating PBG """
+
+        # Population Multiplier
+        # By RAW MT uses d6s to emulate 1d10
+        # We'll just use 1d10
+        self.population_multiplier = dice.roll(1, 10) - 1
+        # Another departure from RAW, we're going to sanitise
+        # the population multiplier to ignore 0s unless the populaiton
+        # itself is 0.
+        if self.population_multiplier == 0 and self.uwp.population != 0:
+            self.population_multiplier = 1
+
+        # Planetoid Belts
+        if dice.roll(2, 6) >= 8:
+            # MT has '13' be 3 belts: But gives no DMs, so how do we get 13?
+            belt_quantity_table = [
+                    0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3
+                    ]
+            self.belts = belt_quantity_table[dice.roll(2, 6)]
+        else:
+            self.belts = 0
+
+        # Gas Giants
+        if dice.roll(2, 6) >= 5:
+            gas_giant_quantity_table = [
+                    0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 5, 5
+                    ]
+            self.gas_giants = gas_giant_quantity_table[dice.roll(2, 6)]
+        else:
+            self.gas_giants = 0
+
 
 
 def Factory(name, coordinates, edition = "MGT2e"):

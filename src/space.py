@@ -48,7 +48,7 @@ class Space:
 
 
 if __name__ == "__main__":
-    s = Space("Test Subsec")
+    s = Space("Test Subsec", size = (32, 20), density = "Standard")
     s.generate()
     print(s)
 
