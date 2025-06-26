@@ -27,8 +27,7 @@ class System:
         self.population_multiplier = 1
 
     def generate_uwp(self):
-        """ Using CT rules for UWP because we are a CT system """
-        self.uwp = uwp.Factory(uwp_string = None, edition = "CT")
+        self.uwp = uwp.Uwp(uwp_string = None)
 
     def generate_bases(self):
         """ Note that this requires the system to have a valid UWP """
@@ -52,14 +51,31 @@ class System:
             self.scout_base = False
 
     def generate_pbg(self):
-        """ Note that CT only has rules for gas giant presence
+        """ P = Population Multiplier
+            B = Belts (i.e. Planetoid Belts)
+            G = Gas Giants """
 
-        P = Population Multiplier
-        B = Belts (i.e. Planetoid Belts)
-        G = Gas Giants """
+        # Population multiplier
+        self.population_multiplier = dice.roll(1, 9)
 
-        if dice.roll(2, 6) <= 9:
-            self.gas_giants = 1
+        # Planetoid belts. Using MegaTraveller rules.
+        if dice.roll(2, 6) >= 8:
+            # MT has '13' be 3 belts, but gives no DMs. How do we get to 13?
+            belt_quantity_table = [
+                #   0  1  2  3  4  5  6  7  8  9  10 11 12 13
+                    0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3
+                    ]
+            self.belts = belt_quantity_table[dice.roll(2, 6)]
+        else:
+            self.belts = 0
+
+        # Gas Giants. Again using MegaTraveller rules.
+        if dice.roll(2, 6) >= 5:
+            gas_giant_quantity_table = [
+                #   0  1  2  3  4  5  6  7  8  9  10 11 12
+                    0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 5, 5
+                    ]
+            self.gas_giants = gas_giant_quantity_table[dice.roll(2, 6)]
         else:
             self.gas_giants = 0
 
@@ -102,64 +118,12 @@ class System:
                 f"{self.get_pbg_str()}" \
                 "    "
 
-
-class MGT2eSystem(System):
-    """ MGT2e lacks rules for things like PBG
-
-    This subclass substitutes in the rules from Megatraveller for these """
-
-    def generate_uwp(self):
-        self.uwp = uwp.Factory(uwp_string = None, edition = "MGT2e")
-
-    def generate_pbg(self):
-        """ Uses MT rules for generating PBG """
-
-        # Population Multiplier
-        # By RAW MT uses d6s to emulate 1d10
-        # We'll just use 1d10
-        self.population_multiplier = dice.roll(1, 10) - 1
-        # Another departure from RAW, we're going to sanitise
-        # the population multiplier to ignore 0s unless the populaiton
-        # itself is 0.
-        if self.population_multiplier == 0 and self.uwp.population != 0:
-            self.population_multiplier = 1
-
-        # Planetoid Belts
-        if dice.roll(2, 6) >= 8:
-            # MT has '13' be 3 belts: But gives no DMs, so how do we get 13?
-            belt_quantity_table = [
-                    0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3
-                    ]
-            self.belts = belt_quantity_table[dice.roll(2, 6)]
-        else:
-            self.belts = 0
-
-        # Gas Giants
-        if dice.roll(2, 6) >= 5:
-            gas_giant_quantity_table = [
-                    0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 5, 5
-                    ]
-            self.gas_giants = gas_giant_quantity_table[dice.roll(2, 6)]
-        else:
-            self.gas_giants = 0
-
-
-
-def Factory(name, coordinates, edition = "MGT2e"):
-    """ Gives appropriate version per the edition """
-    system_per_edition = {
-        "CT": System,
-        "MGT2e": MGT2eSystem
-    }
-    return system_per_edition[edition](name, coordinates)
-
-
 if __name__ == "__main__":
-    earth = uwp.Factory(uwp_string = "A867977-8")
-    solar_system = System(name = "Earth", coordinates = (0,0), uwp = earth)
-    print(solar_system)
-
-    rando_system = System(name = "Rando", 
-                          coordinates = (dice.roll(1,10), dice.roll(1,8)))
-    rando_system.generate()
-    print(rando_system)
+    count = 0
+    for x in range(1, 9):
+        for y in range(1, 11):
+            if dice.roll(1, 6) >= 4:
+                count += 1
+                s = System(name = f"{count}", coordinates = (x, y))
+                s.generate()
+                print(s)

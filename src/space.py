@@ -17,11 +17,10 @@ density_dm = {
 class Space:
     """ A space is a 2D hexagonal grid that contains systems """
 
-    def __init__(self, name, size = (8,10), density = "Standard", edition="MGT2e"):
+    def __init__(self, name, size = (8,10), density = "Standard"):
         self.name = name
         self.size = size
         self.density = density
-        self.edition = edition
 
     def generate(self):
         """ Generates a new space with new systems """
@@ -31,10 +30,9 @@ class Space:
             for column in range(1, self.size[1]+1):
                 if dice.roll(1, 6) + density_dm[self.density] >= 4:
                     systems += 1
-                    s = system.Factory(
+                    s = system.System(
                             name = f"system_{systems}",
-                            coordinates = (row, column),
-                            edition = self.edition)
+                            coordinates = (row, column))
                     s.generate()
                     self.systems.append(s)
 
@@ -46,9 +44,17 @@ class Space:
             ret += system.__str__() + "\n"
         return ret
 
+class Subsector(Space):
+    """ A Subsector is 8x10 hexes """
+
+    def __init__(self, name, density = "Standard"):
+        self.size = (8,10)
+        self.name = name
+        self.density = density
+
 
 if __name__ == "__main__":
-    s = Space("Test Subsec", size = (32, 20), density = "Standard")
+    s = Space("Test Sector", size = (32, 20), density = "Standard")
     s.generate()
     print(s)
 
