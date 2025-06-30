@@ -301,7 +301,7 @@ class ContainerOfSectors(ContainerOfSpaces):
                 # in a sector. And that's true, but it seems a little like
                 # cheating.
                 for i in range(16):
-                    ss_name = self.name + " " + ss_names[0] + \
+                    ss_name = ss_names[0] + \
                             " " + ContainerOfSpaces.subspace_labels[i]
                     subsector_names.append(ss_name)
                 ss_names.append(subsector_names)
