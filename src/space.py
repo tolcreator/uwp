@@ -281,7 +281,6 @@ class ContainerOfSectors(ContainerOfSpaces):
         3) A list containing lists, each sublist having a sector name and a list
         of subsector names.
         """
-        self.subspace_names = []
 
         if not subspace_names:
             """ Case 1 """
@@ -291,28 +290,38 @@ class ContainerOfSectors(ContainerOfSpaces):
             """ and let that handle the rest. """
             for i in range(self.n_subspaces):
                 ss_name = self.name + " " + ContainerOfSpaces.subspace_labels[i]
-                subspace_names.append([ss_name])
+                subspace_names.append(ss_name)
 
-        for ss_names in subspace_names:
-            if len(ss_names) == 1:
-                """ Case 2 """
+        for index, ss_names in enumerate(subspace_names):
+            if type(ss_names) == str:
+                """ Case 2. Turn this into case 3 and let it fall through """
+                sector_names = []
+                sector_names.append(ss_names)
                 subsector_names = []
-                # A few times here we use 16 for the number of subsectors
-                # in a sector. And that's true, but it seems a little like
-                # cheating.
                 for i in range(16):
-                    ss_name = ss_names[0] + \
-                            " " + ContainerOfSpaces.subspace_labels[i]
-                    subsector_names.append(ss_name)
-                ss_names.append(subsector_names)
-                self.subspace_names.append(ss_names)
-            elif len(ss_names[1]) == 16:
-                """ Case 3 """
-                self.subspace_names.append(list(ss_names))
+                    subsector_name = ss_names + " " + \
+                            ContainerOfSpaces.subspace_labels[i]
+                    subsector_names.append(subsector_name)
+                sector_names.append(subsector_names)
+                subspace_names[index] = sector_names
+            elif type(ss_names) == list:
+                """ Case 3. But lets check it. """
+                if len(ss_names) != 2:
+                    raise ValueError("Improper format for sector names in"\
+                            f"ContainerOfSectors: Got len {len(ss_names)}")
+                if type(ss_names[1]) != list:
+                    raise ValueError("Improper format for subsector names in"\
+                            f"ContainerOfSectors: got type {type(ss_names[1])}")
+                if len(ss_names[1]) != 16:
+                    raise ValueError("Improper format for subsector names in"\
+                            f"ContainerOfSectors: got len {len(ss_names[1])}")
             else:
                 """ Panic? """
-                raise ValueError("Incorrectly formatted subspace names"\
-                        " for ContainerOfSectors")
+                raise ValueError("Improper format for sector names in"\
+                        f"ContainerOfSectors: type {type(ss_names)}")
+
+        """ Everything should now be as case 3 """
+        self.subspace_names = list(subspace_names)
 
     def create_subspaces(self):
         """ Almost identical to the super() version """
@@ -351,13 +360,27 @@ class Domain(ContainerOfSectors):
 
 
 if __name__ == "__main__":
-    s = Domain("Test", density="Rift")
-    s.generate()
-    print(s)
 
+    densities_per_sector = ["Sparse", "Standard", "Dense",
+                            [
+                                "Rift", "Rift", "Sparse", "Rift",
+                                "Standard", "Sparse", "Rift", "Rift",
+                                "Dense", "Standard", "Sparse", "Rift",
+                                "Standard", "Sparse", "Rift", "Rift"
+                            ]
+                        ]
+    sector_names = ["Spring", "Summer", "Autumn", 
+                    ["Winter", [
+                        "Alpha", "Beta", "Gamma", "Delta",
+                        "Epsilon", "Zeta", "Eta", "Theta",
+                        "Iota", "Lambda", "Mu", "Nu",
+                        "Xi", "Omicron", "Pi", "Rho"
+                        ]
+                    ]
+                ]
 
-
-
-
-
-
+    d = Domain("Radio Club", 
+               density = densities_per_sector,
+               subspace_names = sector_names)
+    d.generate()
+    print(d)
