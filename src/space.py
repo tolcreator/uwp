@@ -17,11 +17,14 @@ density_dm = {
 class Space:
     """ A space is a 2D hexagonal grid that contains systems """
 
-    def __init__(self, name, size = (8,10), origin = (0,0), density = "Standard"):
+    def __init__(self, name, size = (8,10), origin = (0,0), density = "Standard",
+                 maturity = "Standard", tech_cap = None):
         self.name = name
         self.size = size
         self.origin = origin
         self.density = density
+        self.maturity = maturity
+        self.tech_cap = tech_cap
         self.systems = []
 
     def generate(self):
@@ -36,7 +39,7 @@ class Space:
                             name = f"{self.name} {systems}",
                             coordinates = (row + self.origin[0], 
                                            column + self.origin[1]))
-                    s.generate()
+                    s.generate(self.maturity, self.tech_cap)
                     self.systems.append(s)
 
 
@@ -51,8 +54,9 @@ class Space:
 class Subsector(Space):
     """ A Subsector is 8x10 hexes """
 
-    def __init__(self, name, origin = (0, 0), density = "Standard"):
-        super().__init__(name, (8, 10), origin, density)
+    def __init__(self, name, origin = (0, 0), density = "Standard",
+                 maturity = "Standard", tech_cap = None):
+        super().__init__(name, (8, 10), origin, density, maturity, tech_cap)
 
     def __str__(self):
         ret = f"# Subsector '{self.name}'\n"
@@ -86,10 +90,13 @@ class ContainerOfSpaces(Space):
     Subspace Size is the size of subspaces this space contains. The overall
     size of this space is (subspace_size[0] * base, subspace_size[1] * base)
 
-    density will be a list containing either one entry, in which case this
-    will be the density for all subspaces, or a list containing base*base
-    entries, giving the densities for every subspace. If we're clever, for
-    domains these can themselves be lists.
+    density is either a string containing the density for the whole space,
+    or a list of densities for each subspace. These can themselves be lists
+    if these subspaces themselves contain subspaces.
+
+    maturity is like density, but for maturity
+
+    tech_cap is like density, but with an Integer or None instead of a string
 
     subspace_names will either be empty, which will prompt the container
     to create generic versions, or a list. This is somewhat complicated by
@@ -105,7 +112,8 @@ class ContainerOfSpaces(Space):
             ]
 
     def __init__(self, name, base, origin = (0, 0), subspace_size = (8, 10),
-                 density = "Standard", subspace_names = []):
+                 density = "Standard", maturity = "Standard", tech_cap = None,
+                 subspace_names = []):
         self.name = name
         self.base = base
         self.origin = origin
@@ -113,28 +121,32 @@ class ContainerOfSpaces(Space):
         self.subspace_size = subspace_size
         self.size = (subspace_size[0] * base, subspace_size[1] * base)
 
-        self.setup_densities(density)
+        self.density = self.setup_subspace_fields(density)
+        self.maturity = self.setup_subspace_fields(maturity)
+        self.tech_cap = self.setup_subspace_fields(tech_cap)
+
         self.setup_subspace_names(subspace_names)
 
         self.create_subspaces()
 
-    def setup_densities(self, density):
+    def setup_subspace_fields(self, field):
         """ Two cases:
-        A single string: All subspaces will have this density.
-        A list: A density for each subspace. """
-        self.density = []    
+        A single value: All subspaces will have this value
+        A list: A value for each subspace. """
+        fields = []
 
-        if type(density) == list:
-            if len(density) == self.n_subspaces:
-                for entry in density:
-                    self.density.append(entry)
+        if type(field) == list:
+            if len(field) == self.n_subspaces:
+                for entry in field:
+                    fields.append(entry)
             else:
                 raise ValueError(
-                        "Improper format in densities for ContainerOfSpaces")
+                        "Improper format for subspace field for ContainerOfSpaces")
         else:
-            """ And we presume if else, it's a string """
+            """ And we presume if else, it's a single value """
             for i in range(self.n_subspaces):
-                self.density.append(density)
+                fields.append(field)
+        return fields
 
     def setup_subspace_names(self, subspace_names):
         if subspace_names:
@@ -160,12 +172,14 @@ class ContainerOfSpaces(Space):
                         name = self.subspace_names[i],
                         size = self.subspace_size,
                         origin = origin,
-                        density = self.density[i]
+                        density = self.density[i],
+                        maturity = self.maturity[i],
+                        tech_cap = self.tech_cap[i]
                         )
                 self.subspaces.append(subspace)
 
-    def create_subspace(self, name, size, origin, density):
-        return Space(name, size, origin, density)
+    def create_subspace(self, name, size, origin, density, maturity, tech_cap):
+        return Space(name, size, origin, density, maturity, tech_cap)
 
     def generate(self):
         """ Generates each subspace in turn """
@@ -182,21 +196,22 @@ class ContainerOfSpaces(Space):
 class ContainerOfSubsectors(ContainerOfSpaces):
     """ A Space that will contain Subsectors """
 
-    def __init__(Self, name, base, origin = (0, 0),
-                 density = "Standard", subspace_names = []):
+    def __init__(Self, name, base, origin = (0, 0), density = "Standard", 
+                 maturity = "Standard", tech_cap = None, subspace_names = []):
         super().__init__(name, base, origin, (8, 10),
-                         density, subspace_names)
+                         density, maturity, tech_cap, subspace_names)
 
-    def create_subspace(self, name, size, origin, density):
+    def create_subspace(self, name, size, origin, density, maturity, tech_cap):
         """ We ignore size, all subsectors are 8x10 """
-        return Subsector(name, origin, density)
+        return Subsector(name, origin, density, maturity, tech_cap)
 
 
 class Quadrant(ContainerOfSubsectors):
     """ A Quadrant is 2x2 Subsectors """
-    def __init__(self, name, origin = (0, 0),
-                 density = "Standard", subspace_names = []):
-        super().__init__(name, 2, origin, density, subspace_names)
+    def __init__(self, name, origin = (0, 0), density = "Standard", 
+                 maturity = "Standard", tech_cap = None, subspace_names = []):
+        super().__init__(name, 2, origin, density, 
+                         maturity, tech_cap, subspace_names)
 
     def __str__(self):
         ret = f"# Quadrant '{self.name}'\n"
@@ -206,9 +221,10 @@ class Quadrant(ContainerOfSubsectors):
 
 class Sector(ContainerOfSubsectors):
     """ A Sector is 4x4 Subsectors """
-    def __init__(self, name, origin = (0, 0),
-                 density = "Standard", subspace_names = []):
-        super().__init__(name, 4, origin, density, subspace_names)
+    def __init__(self, name, origin = (0, 0), density = "Standard",
+                 maturity = "Standard", tech_cap = None, subspace_names = []):
+        super().__init__(name, 4, origin, density, 
+                         maturity, tech_cap, subspace_names)
 
     def __str__(self):
         ret = f"# Sector '{self.name}'\n"
@@ -221,50 +237,47 @@ class ContainerOfSectors(ContainerOfSpaces):
     """ Right now that means, a Domain i.e. 2x2 Sectors
     But we might extend this with a 4x4 sector space."""
 
-    def __init__(self, name, base, origin = (0, 0),
-                 density = "Standard", subspace_names = []):
+    def __init__(self, name, base, origin = (0, 0), density = "Standard", 
+                 maturity = "Standard", tech_cap = None, subspace_names = []):
         super().__init__(name, base, origin, (32, 40),
-                         density, subspace_names)
+                         density, maturity, tech_cap, subspace_names)
     
-    def setup_densities(self, density):
-        """ Case 1: 'Standard' Single density for whole domain """
-        """ case 2: ['Standard', 'Standard'] density for each sector """
+    def setup_subspace_fields(self, field):
+        """ Case 1: 'Standard' Single field for whole domain """
+        """ case 2: ['Standard', 'Standard'] field for each sector """
         """ Case 3: [['Standard', 'Standard'], ['Standard', 'Standard']] """
-        """ Density for each subsector. """
+        """ field for each subsector. """
 
-        if type(density) == str:
+        if type(field) != list:
             """ Case 1 """
             """ Turn it into Case 2 and let it fall through """
-            sector_densities = []
+            sector_fields = []
             for i in range(self.n_subspaces):
-                sector_densities.append(density)
-            density = sector_densities
+                sector_fields.append(field)
+            field = sector_fields
 
-        if type(density) != list:
-            raise ValueError(f"Got wrong density type:{type(density)} in"\
-                    " ContainerOfSectors Case 1")
-        elif len(density) != self.n_subspaces:
-            raise ValueError(f"Got wrong sector density count: {len(density)}"\
+
+        if len(field) != self.n_subspaces:
+            raise ValueError(f"Got wrong sector field count: {len(field)}"\
                     "in ContainerOfSectors Case 2-3")
 
-        for index, sector_density in enumerate(density):
-            if type(sector_density) == str:
+        for index, sector_field in enumerate(field):
+            if type(sector_field) != list:
                 """ Case 2 """
                 """ Turn it into Case 3 and let it fall through """
-                subsector_densities = []
+                subsector_fields = []
                 for subsector in range(16):
-                    subsector_densities.append(sector_density)
-                density[index] = subsector_densities
-            elif type(sector_density) != list:
-                raise ValueError(f"Got wrong density type:{type(sector_density)}"\
-                        f" in ContainerOfSubsectors Case 2 element {index}")
-            elif len(sector_density) != 16:
-                raise ValueError("Got wrong subsector density count:"\
-                        f"{len(sector_density)} in ContainerOfSubsectors"\
-                        f"Case 2 element {index}")
+                    subsector_fields.append(sector_field)
+                sector_field = subsector_fields
+                field[index] = sector_field
+
+            if len(sector_field) != 16:
+                raise ValueError("Got wrong subsector field count:"\
+                        f" {len(sector_field)} in ContainerOfSubsectors"\
+                        f" Case 2 element {index}")
 
         """ Everything should be clear now """
-        self.density = list(density)
+        return list(field)
 
     def setup_subspace_names(self, subspace_names):
         """ Containers of Subsectors have to have names for the
@@ -339,19 +352,24 @@ class ContainerOfSectors(ContainerOfSpaces):
                         size = self.subspace_size,
                         origin = origin,
                         density = self.density[i],
+                        maturity = self.maturity[i],
+                        tech_cap = self.tech_cap[i],
                         subspace_names = self.subspace_names[i][1]
                         )
                 self.subspaces.append(subspace)
 
-    def create_subspace(self, name, size, origin, density, subspace_names):
-        return Sector(name, origin, density, subspace_names)
+    def create_subspace(self, name, size, origin, 
+                        density, maturity, tech_cap, subspace_names):
+        return Sector(name, origin,
+                      density, maturity, tech_cap, subspace_names)
 
 
 class Domain(ContainerOfSectors):
     """ A Domain is 2x2 Sectors """
-    def __init__(self, name, origin = (0, 0),
-                 density = "Standard", subspace_names = []):
-        super().__init__(name, 2, origin, density, subspace_names)
+    def __init__(self, name, origin = (0, 0), density = "Standard", 
+                 maturity = "Standard", tech_cap = None, subspace_names = []):
+        super().__init__(name, 2, origin, density,
+                         maturity, tech_cap, subspace_names)
 
     def __str__(self):
         ret = f"# Domain '{self.name}'\n"

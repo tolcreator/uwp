@@ -2,11 +2,19 @@
 
 """ We are using Mongoose Traveller 2e rules with a few additions
 1) We are using 'space opera' and 'hard science' flags from 1e
-2) We may use custom rules for more or less developed regions like
-   those in Traveller: The New Era. """
+2) We are using different columns for starport, inspired by those in
+Megatraveller """
 
 import dice
 import ehex
+
+""" Note in MT this table runs 2 = 'A' to 12 = 'X', I have reversed it here """
+starport_tables = {     # 0   1   2   3   4   5   6   7   8   9   10  11  12
+        "Backwater":    ['X','X','X','E','E','D','D','C','C','C','B','B','A'],
+        "Standard":     ['X','X','X','E','E','D','D','C','C','B','B','A','A'],
+        "Mature":       ['X','X','E','E','E','D','D','C','C','B','B','A','A'],
+        "Cluster":      ['X','X','X','E','D','D','C','C','B','B','A','A','A']
+        }
 
 def _generate_size():
     return dice.roll(2, 6) - 2
@@ -120,7 +128,7 @@ def _generate_law_level(population, government):
         return 0
     return law
 
-def _generate_starport(population, hard_science):
+def _generate_starport(population, hard_science, maturity):
 
     # MGT2e already has modifiers for starport based on population,
     # if much more subtle than pop-7. This result ends up in huge
@@ -131,9 +139,8 @@ def _generate_starport(population, hard_science):
     if population == 0:
         return 'X'
 
-    starport_table = [
-        'X', 'X', 'X', 'E', 'E', 'D', 'D', 'C', 'C', 'B', 'B', 'A'
-            ]
+    starport_table = starport_tables[maturity]
+
     dm = 0
     if hard_science:
         dm = population - 7
@@ -202,9 +209,8 @@ def _get_government_tech_dm(government):
         return -2
     return 0
 
-def _generate_tech_level(
-        starport, size, atmosphere, 
-        hydrosphere, population, government):
+def _generate_tech_level(starport, size, atmosphere,hydrosphere,
+                         population, government, tech_cap):
 
     if population == 0:
         return 0
@@ -217,12 +223,21 @@ def _generate_tech_level(
     dm += _get_population_tech_dm(population)
     dm += _get_government_tech_dm(government)
 
-    tech = dice.roll(1, 6) + dm
+    if tech_cap and dm+1 > tech_cap:
+        return dm + 1
+    elif tech_cap and dm+6 > tech_cap:
+        diff = tech_cap - dm
+        tech = dice.roll(1, diff) + dm
+    else:
+        tech = dice.roll(1, 6) + dm
     if tech < 0:
         return 0
     return tech
 
-def generate_uwp(space_opera = True, hard_science = True):
+def generate_uwp(space_opera = True, 
+                 hard_science = True, 
+                 maturity = "Standard",
+                 tech_cap = None):
     size = _generate_size()
     atmosphere = _generate_atmosphere(size, space_opera)
     temperature = _generate_temperature(atmosphere)
@@ -231,10 +246,10 @@ def generate_uwp(space_opera = True, hard_science = True):
     population = _generate_population(size, atmosphere, hard_science)
     government = _generate_government(population)
     law_level = _generate_law_level(population, government)
-    starport = _generate_starport(population, hard_science)
+    starport = _generate_starport(population, hard_science, maturity)
     tech_level = _generate_tech_level(
-            starport, size, atmosphere,
-            hydrosphere, population, government)
+            starport, size, atmosphere, hydrosphere, 
+            population, government, tech_cap)
 
     uwp = f"{starport}" \
           f"{ehex.int_to_hex(size)}" \

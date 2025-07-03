@@ -40,10 +40,10 @@ def check_is_uwp_string_valid(uwp_string):
 
 class Uwp:
 
-    def __init__(self, uwp_string = None):
+    def __init__(self, uwp_string = None, maturity = "Standard", tech_cap = None):
         """ Creates the world from a given UWP, or generates a new one """
         if not uwp_string:
-            uwp_string = uwp_generator.generate_uwp()
+            uwp_string = uwp_generator.generate_uwp(maturity, tech_cap)
 
         if not check_is_uwp_string_valid(uwp_string):
             raise ValueError

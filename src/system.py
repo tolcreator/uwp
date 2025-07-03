@@ -26,8 +26,10 @@ class System:
         self.belts = 0
         self.population_multiplier = 1
 
-    def generate_uwp(self):
-        self.uwp = uwp.Uwp(uwp_string = None)
+    def generate_uwp(self, maturity, tech_cap):
+        self.uwp = uwp.Uwp(uwp_string = None, 
+                           maturity = maturity, 
+                           tech_cap = tech_cap)
 
     def generate_bases(self):
         """ Note that this requires the system to have a valid UWP """
@@ -79,9 +81,9 @@ class System:
         else:
             self.gas_giants = 0
 
-    def generate(self):
+    def generate(self, maturity, tech_cap):
         """ Generates all system details"""
-        self.generate_uwp()
+        self.generate_uwp(maturity, tech_cap)
         self.generate_bases()
         self.generate_pbg()
 
