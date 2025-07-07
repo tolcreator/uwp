@@ -4,8 +4,10 @@ Spaces include simple spaces such as Subsectors and more complex
 spaces such as Sectors and Domains which contain other spaces. """
 
 import dice
-import uwp
+import json
+import sys
 import system
+import uwp
 
 density_dm = {
             "Rift": -2,
@@ -59,7 +61,7 @@ class Subsector(Space):
         super().__init__(name, (8, 10), origin, density, maturity, tech_cap)
 
     def __str__(self):
-        ret = f"# Subsector '{self.name}'\n"
+        ret = f"# Subsector '{self.name}' at '{self.origin[0]},{self.origin[1]}'\n"
         ret += super().__str__()
         return ret
 
@@ -214,7 +216,7 @@ class Quadrant(ContainerOfSubsectors):
                          maturity, tech_cap, subspace_names)
 
     def __str__(self):
-        ret = f"# Quadrant '{self.name}'\n"
+        ret = f"# Quadrant '{self.name}' at '{self.origin[0]},{self.origin[1]}'\n"
         ret += super().__str__()
         return ret
 
@@ -223,11 +225,17 @@ class Sector(ContainerOfSubsectors):
     """ A Sector is 4x4 Subsectors """
     def __init__(self, name, origin = (0, 0), density = "Standard",
                  maturity = "Standard", tech_cap = None, subspace_names = []):
+
+        print("Sector Density:\n", density)
+        print("\nSector Subspace Names:\n", subspace_names)
+
+
         super().__init__(name, 4, origin, density, 
                          maturity, tech_cap, subspace_names)
 
     def __str__(self):
         ret = f"# Sector '{self.name}'\n"
+        ret = f"# Sector '{self.name}' at '{self.origin[0]},{self.origin[1]}'\n"
         ret += super().__str__()
         return ret
 
@@ -368,37 +376,107 @@ class Domain(ContainerOfSectors):
     """ A Domain is 2x2 Sectors """
     def __init__(self, name, origin = (0, 0), density = "Standard", 
                  maturity = "Standard", tech_cap = None, subspace_names = []):
+
+        print("Domain Density:\n", density)
+        print("\nDomain Subspace Names:\n", subspace_names)
+    
+
         super().__init__(name, 2, origin, density,
                          maturity, tech_cap, subspace_names)
 
     def __str__(self):
-        ret = f"# Domain '{self.name}'\n"
+        ret = f"# Domain '{self.name}' at '{self.origin[0]},{self.origin[1]}'\n"
         ret += super().__str__()
         return ret
 
 
+def create_subsector_from_dict(descriptor):
+    print(descriptor)
+    return None
+
+def create_quadrant_from_dict(descriptor):
+    print(descriptor)
+    return None
+
+def create_sector_from_dict(descriptor):
+    print(descriptor)
+    return None
+
+def create_domain_from_dict(descriptor):
+    print(descriptor)
+
+    domain = Domain(
+            name = descriptor["Name"],
+            origin = tuple(descriptor["Origin"]),
+            density = descriptor["Density"],
+            maturity = descriptor["Maturity"],
+            tech_cap = descriptor["Tech cap"],
+            subspace_names = descriptor["Subspace names"]
+            )
+    return domain
+
+
+def create_space_from_json(jdescriptor):
+    descriptor = json.loads(jdescriptor)
+    size = descriptor["Size"]
+    space_creators = {
+            "Subsector": create_subsector_from_dict,
+            "Quadrant": create_quadrant_from_dict,
+            "Sector": create_sector_from_dict,
+            "Domain": create_domain_from_dict
+            }
+    if size in space_creators:
+        return space_creators[size](descriptor)
+    else:
+        print(f"Don't know what to do with a space of size '{size}'")
+        return None
+
 if __name__ == "__main__":
-
-    densities_per_sector = ["Sparse", "Standard", "Dense",
-                            [
-                                "Rift", "Rift", "Sparse", "Rift",
-                                "Standard", "Sparse", "Rift", "Rift",
-                                "Dense", "Standard", "Sparse", "Rift",
-                                "Standard", "Sparse", "Rift", "Rift"
+    sample_domain = {
+        "Size": "Domain",
+        "Name": "Radio Club",
+        "Origin": (0, 0),
+        "Density": [    "Rift",
+                        "Sparse",
+                        "Standard",
+                        [   "Rift", "Rift", "Sparse", "Sparse",
+                            "Rift", "Sparse", "Standard", "Standard",
+                            "Sparse", "Standard", "Standard", "Standard",
+                            "Sparse", "Standard", "Standard", "Dense"
+                        ]
+                    ],
+        "Maturity": [   "Backwater",
+                        "Backwater",
+                        "Standard",
+                        [   "Backwater", "Backwater", "Backwater", "Backwater",
+                            "Backwater", "Backwater", "Backwater", "Backwater",
+                            "Backwater", "Standard", "Standard", "Standard",
+                            "Cluster", "Standard", "Backwater", "Mature"
+                        ]
+                    ],
+        "Tech cap": [   0xC,
+                        0xD,
+                        0xE,
+                        [   0xA, 0xA, 0xA, 0xA,
+                            0xA, 0xC, 0xC, 0xC,
+                            0xC, 0xC, 0xC, 0xC,
+                            0xF, 0xD, 0xD, 0xE
+                         ]
+                    ],
+        "Subspace names": [ "Spring",
+                            "Summer",
+                            "Autumn",
+                            [    "Winter", 
+                                [   "Alpha", "Beta", "Gamma", "Delta",
+                                    "Epsilon", "Zeta", "Eta", "Theta",
+                                    "Iota", "Kappa", "Lambda", "Mu",
+                                    "Nu", "Xi", "Omicron", "Pi"
+                                ]
                             ]
-                        ]
-    sector_names = ["Spring", "Summer", "Autumn", 
-                    ["Winter", [
-                        "Alpha", "Beta", "Gamma", "Delta",
-                        "Epsilon", "Zeta", "Eta", "Theta",
-                        "Iota", "Lambda", "Mu", "Nu",
-                        "Xi", "Omicron", "Pi", "Rho"
-                        ]
-                    ]
-                ]
-
-    d = Domain("Radio Club", 
-               density = densities_per_sector,
-               subspace_names = sector_names)
-    d.generate()
-    print(d)
+                          ]
+    }
+    s = create_space_from_json(json.dumps(sample_domain))
+    s.generate()
+    print(s)
+    
+    
