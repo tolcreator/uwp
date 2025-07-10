@@ -389,22 +389,39 @@ class Domain(ContainerOfSectors):
         ret += super().__str__()
         return ret
 
-
 def create_subsector_from_dict(descriptor):
-    print(descriptor)
-    return None
+    subsector = Subsector(
+            name = descriptor["Name"],
+            origin = tuple(descriptor["Origin"]),
+            density = descriptor["Density"],
+            maturity = descriptor["Maturity"],
+            tech_cap = descriptor["Tech cap"]
+            )
+    return subsector
 
 def create_quadrant_from_dict(descriptor):
-    print(descriptor)
-    return None
+    quadrant = Quadrant(
+            name = descriptor["Name"],
+            origin = tuple(descriptor["Origin"]),
+            density = descriptor["Density"],
+            maturity = descriptor["Maturity"],
+            tech_cap = descriptor["Tech cap"],
+            subspace_names = descriptor["Subspace names"]
+            )
+    return quadrant
 
 def create_sector_from_dict(descriptor):
-    print(descriptor)
-    return None
+    sector = Sector(
+            name = descriptor["Name"],
+            origin = tuple(descriptor["Origin"]),
+            density = descriptor["Density"],
+            maturity = descriptor["Maturity"],
+            tech_cap = descriptor["Tech cap"],
+            subspace_names = descriptor["Subspace names"]
+            )
+    return sector
 
 def create_domain_from_dict(descriptor):
-    print(descriptor)
-
     domain = Domain(
             name = descriptor["Name"],
             origin = tuple(descriptor["Origin"]),
@@ -415,9 +432,7 @@ def create_domain_from_dict(descriptor):
             )
     return domain
 
-
-def create_space_from_json(jdescriptor):
-    descriptor = json.loads(jdescriptor)
+def create_space_from_dict(descriptor):
     size = descriptor["Size"]
     space_creators = {
             "Subsector": create_subsector_from_dict,
@@ -432,51 +447,17 @@ def create_space_from_json(jdescriptor):
         return None
 
 if __name__ == "__main__":
-    sample_domain = {
-        "Size": "Domain",
-        "Name": "Radio Club",
-        "Origin": (0, 0),
-        "Density": [    "Rift",
-                        "Sparse",
-                        "Standard",
-                        [   "Rift", "Rift", "Sparse", "Sparse",
-                            "Rift", "Sparse", "Standard", "Standard",
-                            "Sparse", "Standard", "Standard", "Standard",
-                            "Sparse", "Standard", "Standard", "Dense"
-                        ]
-                    ],
-        "Maturity": [   "Backwater",
-                        "Backwater",
-                        "Standard",
-                        [   "Backwater", "Backwater", "Backwater", "Backwater",
-                            "Backwater", "Backwater", "Backwater", "Backwater",
-                            "Backwater", "Standard", "Standard", "Standard",
-                            "Cluster", "Standard", "Backwater", "Mature"
-                        ]
-                    ],
-        "Tech cap": [   0xC,
-                        0xD,
-                        0xE,
-                        [   0xA, 0xA, 0xA, 0xA,
-                            0xA, 0xC, 0xC, 0xC,
-                            0xC, 0xC, 0xC, 0xC,
-                            0xF, 0xD, 0xD, 0xE
-                         ]
-                    ],
-        "Subspace names": [ "Spring",
-                            "Summer",
-                            "Autumn",
-                            [    "Winter", 
-                                [   "Alpha", "Beta", "Gamma", "Delta",
-                                    "Epsilon", "Zeta", "Eta", "Theta",
-                                    "Iota", "Kappa", "Lambda", "Mu",
-                                    "Nu", "Xi", "Omicron", "Pi"
-                                ]
-                            ]
-                          ]
-    }
-    s = create_space_from_json(json.dumps(sample_domain))
-    s.generate()
-    print(s)
-    
+    if len(sys.argv) == 2:
+        filename = sys.argv[1]
+        try:
+            with open(filename) as fp:
+                desc = json.load(fp)
+                s = create_space_from_dict(desc)
+                s.generate()
+                print(s)
+        except IOError:
+            print(f"Could not open '{filename}'")
+    else:
+        print("I expect a file to determine space parameters")
+     
     
